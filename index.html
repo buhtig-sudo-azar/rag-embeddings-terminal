@@ -159,11 +159,11 @@ $(function () {
   const labels = ["Nginx", "Apache", "Docker", "systemd", "Борщ (суп)"];
 
   const coords3d = [
-    {x: 2.1, y: 0.8,  z: -0.3},
-    {x: 1.9, y: 0.6,  z: -0.2},
-    {x: 1.5, y: 0.3,  z:  0.1},
-    {x: 1.2, y: 0.1,  z:  0.3},
-    {x: -1.0,y: -1.5, z:  1.8}
+    {x: 2.1,  y: 0.8,  z: -0.3},
+    {x: 1.9,  y: 0.6,  z: -0.2},
+    {x: 1.5,  y: 0.3,  z:  0.1},
+    {x: 1.2,  y: 0.1,  z:  0.3},
+    {x: -1.0, y: -1.5, z:  1.8}
   ];
 
   const similarities = [
@@ -325,9 +325,9 @@ $(function () {
     term.echo('3. ПОИСК = запрос → вектор → сравнение → ближайшие документы.');
     term.echo('4. НА МАЛЕНЬКОМ КОРПУСЕ РЕЗУЛЬТАТ МОЖЕТ КАЗАТЬСЯ «СТРАННЫМ» — И ЭТО НОРМАЛЬНО.');
     term.echo('');
-    term.echo('   Если модель на запрос про суп выдаст Nginx выше борща — это значит, что вектор супа');
-    term.echo('   оказался геометрически ближе к техдокументации. Модель не знает кухню, она ');
-    term.echo('   просто измеряет расстояния в пространстве эмбеддингов.');
+    term.echo('   Если модель на запрос про суп или ругательное слово возвращает Nginx,');
+    term.echo('   это не «мнение» модели. Это значит, что вектор запроса прицепился к той же');
+    term.echo('   области пространства, где живут техдокументы.');
     term.echo('');
     term.echo('СЛЕДУЮЩИЙ ШАГ: Модуль 3/4 — чанкинг (нарезка документов).');
     term.echo('');
@@ -344,22 +344,42 @@ $(function () {
     term.echo('');
 
     const q = query.toLowerCase();
-    let resultIdx = 0;
 
-    if (q.includes('борщ') || q.includes('свёкл') || q.includes('еда') || q.includes('обед') || q.includes('суп')) {
+    // Темы/слова, которые "модель явно знает"
+    const knownTopics = {
+      food:   ['борщ', 'свёкл', 'еда', 'обед', 'суп'],
+      docker: ['docker', 'докер', 'контейнер', 'контейнеризац'],
+      systemd:['systemd', 'системд', 'служб', 'инициал'],
+      apache: ['apache', 'апач', 'хостинг'],
+      nginx:  ['nginx', 'энджин', 'веб-сервер', 'вебсервер', 'http']
+    };
+
+    let resultIdx = 0;
+    let matchedTopic = null;
+
+    if (knownTopics.food.some(w => q.includes(w))) {
       resultIdx = 4; // борщ/суп
-    } else if (q.includes('изолир') || q.includes('контейнер')) {
+      matchedTopic = 'еда (борщ / суп)';
+    } else if (knownTopics.docker.some(w => q.includes(w))) {
       resultIdx = 2; // docker
-    } else if (q.includes('систем') || q.includes('служб') || q.includes('инициал')) {
+      matchedTopic = 'Docker / контейнеры';
+    } else if (knownTopics.systemd.some(w => q.includes(w))) {
       resultIdx = 3; // systemd
-    } else if (q.includes('apache') || q.includes('хостинг')) {
+      matchedTopic = 'systemd / службы';
+    } else if (knownTopics.apache.some(w => q.includes(w))) {
       resultIdx = 1; // apache
-    } else if (q.includes('nginx') || q.includes('веб-сервер') || q.includes('http')) {
+      matchedTopic = 'Apache / хостинг';
+    } else if (knownTopics.nginx.some(w => q.includes(w))) {
       resultIdx = 0; // nginx
+      matchedTopic = 'Nginx / веб‑сервер';
     }
 
+    // Ругательные / оценочные слова
+    const harshWords = ['говн', 'дерьм', 'фигня', 'шлак', 'отстой'];
+    const isHarsh = harshWords.some(w => q.includes(w));
+
     const results = [
-      {idx: resultIdx,         score: 0.81 + Math.random() * 0.05},
+      {idx: resultIdx,           score: 0.81 + Math.random() * 0.05},
       {idx: (resultIdx + 1) % 5, score: 0.78 + Math.random() * 0.04},
       {idx: (resultIdx + 2) % 5, score: 0.75 + Math.random() * 0.04},
       {idx: (resultIdx + 3) % 5, score: 0.74 + Math.random() * 0.03},
@@ -371,9 +391,27 @@ $(function () {
       term.echo(`     ${documents[idx]}`);
     });
     term.echo('');
-    term.echo('  На реальной модели результаты могут быть не такими «аккуратными» —');
-    term.echo('  иногда запрос про суп действительно окажется ближе к техтекстам.');
-    term.echo('  Это не баг, а особенность маленького корпуса и геометрии эмбеддингов.');
+
+    if (matchedTopic) {
+      term.echo('  ▶ Для этого запроса сработало "знание темы":');
+      term.echo(`    модель узнала паттерны про ${matchedTopic} и вытащила ближайшие документы.`);
+    } else {
+      term.echo('  ▶ Для этого запроса модель НЕ узнала знакомых тем.');
+      term.echo('    Мы просто берём ближайший вектор в маленьком пространстве документов,');
+      term.echo('    поэтому любое странное или оценочное слово прилипает к техтекстам');
+      term.echo('    вроде Nginx и Apache.');
+    }
+
+    if (isHarsh) {
+      term.echo('');
+      term.echo('  Важно: модель не знает, что такое "хорошо" и "плохо".');
+      term.echo('  Она не ругает Nginx и не обижает борщ — она просто измеряет расстояния');
+      term.echo('  между векторами и выбирает ближайшие.');
+    }
+
+    term.echo('');
+    term.echo('  На реальной модели результаты были бы ещё шумнее —');
+    term.echo('  это не баг, а особенность эмбеддингов и маленького корпуса.');
     term.echo('');
   }
 
@@ -433,7 +471,15 @@ $(function () {
     term.echo('ДОСТУПНЫЕ КОМАНДЫ:');
     term.echo('');
     term.echo('  demo          — полная демонстрация (корпус + суп + Nginx)');
-    term.echo('  search ЗАПРОС — поиск по документам (суп, nginx, docker, systemd...)');
+    term.echo('  search ЗАПРОС — поиск по документам');
+    term.echo('');
+    term.echo('    Учебная модель умеет распознавать несколько тем:');
+    term.echo('      • еда: борщ, суп, свёкла, обед, еда');
+    term.echo('      • контейнеры: docker, докер, контейнер, контейнеризация');
+    term.echo('      • службы: systemd, системд, службы, инициализация');
+    term.echo('      • веб: nginx, апач, apache, веб-сервер, http');
+    term.echo('    Всё остальное считается "незнакомым" и прилипаeт к ближайшим техтекстам.');
+    term.echo('');
     term.echo('  what          — что такое эмбеддинг');
     term.echo('  rag           — схема RAG-конвейера');
     term.echo('  tree          — структура проекта');
@@ -483,6 +529,7 @@ $(function () {
       '',
       '  Набери demo для демонстрации.',
       '  Набери help для списка команд.',
+      '  Попробуй search суп или search говно и посмотри, как ведёт себя поиск.',
       ''
     ].join('\n'),
     prompt: '> ',
