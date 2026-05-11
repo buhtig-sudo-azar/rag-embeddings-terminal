@@ -393,13 +393,20 @@ $(function () {
     term.echo('');
 
     if (matchedTopic) {
-      term.echo('  ▶ Для этого запроса сработало "знание темы":');
-      term.echo(`    модель узнала паттерны про ${matchedTopic} и вытащила ближайшие документы.`);
+      term.echo('  ▶ Для этого запроса сработало "знание темы".');
+      term.echo(`    Модель узнала паттерны про ${matchedTopic} и сравнила вектор запроса`);
+      term.echo('    с векторами документов, поэтому сверху те тексты, которые ближе всего');
+      term.echo('    по косинусному сходству.');
     } else {
       term.echo('  ▶ Для этого запроса модель НЕ узнала знакомых тем.');
-      term.echo('    Мы просто берём ближайший вектор в маленьком пространстве документов,');
-      term.echo('    поэтому любое странное или оценочное слово прилипает к техтекстам');
-      term.echo('    вроде Nginx и Apache.');
+      term.echo('    В реальной модели это выглядит так:');
+      term.echo('      1) запрос → вектор из 1024 чисел;');
+      term.echo('      2) каждый документ → свой вектор из 1024 чисел;');
+      term.echo('      3) считаем sim(q, d) для всех документов и сортируем по убыванию.');
+      term.echo('');
+      term.echo('    На маленьком корпусе (5 документов) огромная часть пространства');
+      term.echo('    геометрически ближе всего к техописаниям вроде Nginx/Apache.');
+      term.echo('    Поэтому даже странное или ругательное слово попадает в их "зону притяжения".');
     }
 
     if (isHarsh) {
@@ -422,10 +429,49 @@ $(function () {
     term.echo('ЭМБЕДДИНГ — это 1024 числа, описывающие СМЫСЛ.');
     term.echo('');
     term.echo('Как это работает:');
-    term.echo('  1. Модель читает текст целиком');
-    term.echo('  2. Извлекает контекст (~1024 аспекта)');
-    term.echo('  3. Каждый аспект → одно число');
-    term.echo('  4. 1024 числа = полное описание смысла');
+    term.echo('  1. Модель читает текст целиком;');
+    term.echo('  2. Извлекает контекст (~1024 аспекта);');
+    term.echo('  3. Каждый аспект → одно число;');
+    term.echo('  4. 1024 числа = полное описание смысла.');
+    term.echo('');
+  }
+
+  function cmd_geometry(term) {
+    term.echo('');
+    term.echo('КАК МОДЕЛЬ РАБОТАЕТ С НЕЗНАКОМЫМИ СЛОВАМИ');
+    term.echo('');
+    term.echo('1) МОДЕЛЬ НИКОГДА НЕ ГОВОРИТ "Я НЕ ЗНАЮ ЭТО СЛОВО".');
+    term.echo('   Любой текст → всегда превращается в вектор из 1024 чисел.');
+    term.echo('   Даже если это опечатка, сленг или ругательство.');
+    term.echo('');
+    term.echo('2) У НАС ЕСТЬ:');
+    term.echo('   • 5 документов → 5 векторов (по 1024 числа каждый);');
+    term.echo('   • запрос → ещё один вектор из 1024 чисел.');
+    term.echo('');
+    term.echo('   Дальше модель сравнивает ВЕКТОР ЗАПРОСА с ВЕКТОРАМИ ДОКУМЕНТОВ.');
+    term.echo('   Сравнение = не по словам, а по геометрии: косинусное сходство.');
+    term.echo('');
+    term.echo('3) КОСИНУСНОЕ СХОДСТВО:');
+    term.echo('   sim(q, d) = (q · d) / (||q|| * ||d||)');
+    term.echo('   q — вектор запроса, d — вектор документа.');
+    term.echo('   Чем ближе sim к 1.0 → тем ближе направления векторов → тем больше "сходство смысла".');
+    term.echo('');
+    term.echo('4) ЧТО ЕСЛИ СЛОВО НЕЗНАКОМО?');
+    term.echo('   • Модель всё равно выдаёт вектор из 1024 чисел;');
+    term.echo('   • этот вектор попадает в какое-то место пространства;');
+    term.echo('   • мы просто берём ближайший документ по sim(q, d).');
+    term.echo('');
+    term.echo('   На маленьком корпусе (5 текстов про инфраструктуру и один про еду)');
+    term.echo('   огромные области пространства оказываются ближе всего к техтекстам.');
+    term.echo('   Поэтому любое странное слово легко "прилипает" к Nginx/Apache.');
+    term.echo('');
+    term.echo('5) ВАЖНО:');
+    term.echo('   • Модель не "думает", что борщ = Nginx или что Nginx = "говно";');
+    term.echo('   • у неё нет понятий "нравится/не нравится", "хорошо/плохо";');
+    term.echo('   • она только измеряет расстояния между векторами.');
+    term.echo('');
+    term.echo('Вывод: если результат поиска кажется странным, это не ошибка модели,');
+    term.echo('а эффект геометрии эмбеддингов и маленького набора документов.');
     term.echo('');
   }
 
@@ -434,13 +480,13 @@ $(function () {
     term.echo('RAG-КОНВЕЙЕР');
     term.echo('');
     term.echo('ЭТАП 1: INDEX');
-    term.echo('  Документы → чанкинг → эмбеддинги → ChromaDB');
+    term.echo('  Документы → чанкинг → эмбеддинги → ChromaDB;');
     term.echo('');
     term.echo('ЭТАП 2: RETRIEVE');
-    term.echo('  Запрос → эмбеддинг → косинусное сходство → топ-3');
+    term.echo('  Запрос → эмбеддинг → косинусное сходство → топ-3;');
     term.echo('');
     term.echo('ЭТАП 3: GENERATE');
-    term.echo('  Запрос + документы → LLM → ответ');
+    term.echo('  Запрос + документы → LLM → ответ.');
     term.echo('');
   }
 
@@ -460,9 +506,9 @@ $(function () {
     term.echo('МОДЕЛИ ЭМБЕДДИНГОВ:');
     term.echo('');
     term.echo('● ТЕКУЩАЯ:');
-    term.echo('  intfloat/multilingual-e5-large');
-    term.echo('  Размерность: 1024 числа');
-    term.echo('  Языки: 100+ (включая русский)');
+    term.echo('  intfloat/multilingual-e5-large;');
+    term.echo('  размерность: 1024 числа;');
+    term.echo('  языки: 100+ (включая русский).');
     term.echo('');
   }
 
@@ -470,22 +516,23 @@ $(function () {
     term.echo('');
     term.echo('ДОСТУПНЫЕ КОМАНДЫ:');
     term.echo('');
-    term.echo('  demo          — полная демонстрация (корпус + суп + Nginx)');
-    term.echo('  search ЗАПРОС — поиск по документам');
+    term.echo('  demo          — полная демонстрация (корпус + суп + Nginx);');
+    term.echo('  search ЗАПРОС — поиск по документам;');
     term.echo('');
     term.echo('    Учебная модель умеет распознавать несколько тем:');
-    term.echo('      • еда: борщ, суп, свёкла, обед, еда');
-    term.echo('      • контейнеры: docker, докер, контейнер, контейнеризация');
-    term.echo('      • службы: systemd, системд, службы, инициализация');
-    term.echo('      • веб: nginx, апач, apache, веб-сервер, http');
+    term.echo('      • еда: борщ, суп, свёкла, обед, еда;');
+    term.echo('      • контейнеры: docker, докер, контейнер, контейнеризация;');
+    term.echo('      • службы: systemd, системд, службы, инициализация;');
+    term.echo('      • веб: nginx, апач, apache, веб-сервер, http;');
     term.echo('    Всё остальное считается "незнакомым" и прилипаeт к ближайшим техтекстам.');
     term.echo('');
-    term.echo('  what          — что такое эмбеддинг');
-    term.echo('  rag           — схема RAG-конвейера');
-    term.echo('  tree          — структура проекта');
-    term.echo('  models        — модели эмбеддингов');
-    term.echo('  clear         — очистить экран');
-    term.echo('  help          — этот список');
+    term.echo('  what          — что такое эмбеддинг;');
+    term.echo('  geometry      — как модель работает с незнакомыми словами;');
+    term.echo('  rag           — схема RAG-конвейера;');
+    term.echo('  tree          — структура проекта;');
+    term.echo('  models        — модели эмбеддингов;');
+    term.echo('  clear         — очистить экран;');
+    term.echo('  help          — этот список.');
     term.echo('');
   }
 
@@ -501,14 +548,15 @@ $(function () {
     const args  = parts.slice(1).join(' ');
 
     switch (cmd) {
-      case 'demo':   await cmd_demo(term); break;
-      case 'search': cmd_search(term, args); break;
-      case 'what':   cmd_what(term); break;
-      case 'rag':    cmd_rag(term); break;
-      case 'tree':   cmd_tree(term); break;
-      case 'models': cmd_models(term); break;
-      case 'help':   cmd_help(term); break;
-      case 'clear':  term.clear(); break;
+      case 'demo':     await cmd_demo(term); break;
+      case 'search':   cmd_search(term, args); break;
+      case 'what':     cmd_what(term); break;
+      case 'geometry': cmd_geometry(term); break;
+      case 'rag':      cmd_rag(term); break;
+      case 'tree':     cmd_tree(term); break;
+      case 'models':   cmd_models(term); break;
+      case 'help':     cmd_help(term); break;
+      case 'clear':    term.clear(); break;
       default:
         term.echo(`[!] Неизвестная команда: ${cmd}`);
         term.echo('    Набери help для списка.');
@@ -529,14 +577,14 @@ $(function () {
       '',
       '  Набери demo для демонстрации.',
       '  Набери help для списка команд.',
-      '  Попробуй search суп или search говно и посмотри, как ведёт себя поиск.',
+      '  Набери geometry, чтобы увидеть, как модель работает с незнакомыми словами.',
       ''
     ].join('\n'),
     prompt: '> ',
     height: 550,
     width: '100%',
     checkArity: false,
-    completion: ['demo', 'search', 'what', 'rag', 'tree', 'models', 'help', 'clear'],
+    completion: ['demo', 'search', 'what', 'geometry', 'rag', 'tree', 'models', 'help', 'clear'],
     keydown: function (e) {
       if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
         this.clear();
