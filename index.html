@@ -153,17 +153,17 @@ $(function () {
     "Apache — HTTP-сервер для хостинга веб-сайтов",
     "Docker — платформа для контейнеризации приложений",
     "systemd — система инициализации и управления службами в Linux",
-    "Рецепт классического украинского борща со сметаной и пампушками"
+    "Рецепт классического украинского борща — густой овощной суп со свёклой, капустой и сметаной"
   ];
 
-  const labels = ["Nginx", "Apache", "Docker", "systemd", "Борщ"];
+  const labels = ["Nginx", "Apache", "Docker", "systemd", "Борщ (суп)"];
 
   const coords3d = [
-    {x: 2.1, y: 0.8, z: -0.3},
-    {x: 1.9, y: 0.6, z: -0.2},
-    {x: 1.5, y: 0.3, z: 0.1},
-    {x: 1.2, y: 0.1, z: 0.3},
-    {x: -1.0, y: -1.5, z: 1.8}
+    {x: 2.1, y: 0.8,  z: -0.3},
+    {x: 1.9, y: 0.6,  z: -0.2},
+    {x: 1.5, y: 0.3,  z:  0.1},
+    {x: 1.2, y: 0.1,  z:  0.3},
+    {x: -1.0,y: -1.5, z:  1.8}
   ];
 
   const similarities = [
@@ -179,7 +179,6 @@ $(function () {
 
   function bar(score) {
     const width = Math.floor(score * 30);
-    const color = score >= 0.85 ? 'green' : score >= 0.78 ? 'yellow' : 'red';
     return `${'█'.repeat(width)}`;
   }
 
@@ -188,7 +187,7 @@ $(function () {
     const allY = coords3d.map(c => c.y);
     const allZ = coords3d.map(c => c.z);
     const colors = ['#00ff41', '#00ff41', '#00ff41', '#00ff41', '#ff4444'];
-    const sizes = [8, 8, 8, 8, 12];
+    const sizes  = [8, 8, 8, 8, 12];
 
     const trace = {
       type: 'scatter3d',
@@ -241,8 +240,8 @@ $(function () {
     for (let i = 0; i <= barLen; i++) {
       await sleep(40);
       const filled = '█'.repeat(i);
-      const empty = '░'.repeat(barLen - i);
-      const pct = Math.round((i / barLen) * 100);
+      const empty  = '░'.repeat(barLen - i);
+      const pct    = Math.round((i / barLen) * 100);
       term.set_prompt(`[${filled}${empty}] ${pct}%`);
     }
     term.set_prompt('> ');
@@ -285,17 +284,22 @@ $(function () {
     term.echo('══════════════════════════════════════════════════════');
     term.echo('  ШАГ 5: СЕМАНТИЧЕСКИЙ ПОИСК');
     term.echo('══════════════════════════════════════════════════════');
+    term.echo('  Попробуем три запроса:');
+    term.echo('   • про веб-сервер');
+    term.echo('   • про изолированную среду');
+    term.echo('   • про суп из свёклы');
+    term.echo('');
 
     const queries = [
       "Как настроить веб-сервер для раздачи статических файлов?",
       "Как создать изолированную среду для тестирования?",
-      "Что приготовить на обед из свёклы?"
+      "Какой суп можно приготовить из свёклы?"
     ];
 
     const searchResults = {
       0: [{idx:1, score:0.810}, {idx:0, score:0.807}, {idx:2, score:0.783}, {idx:3, score:0.776}, {idx:4, score:0.760}],
       1: [{idx:2, score:0.803}, {idx:3, score:0.784}, {idx:0, score:0.781}, {idx:1, score:0.768}, {idx:4, score:0.737}],
-      2: [{idx:4, score:0.769}, {idx:2, score:0.768}, {idx:3, score:0.764}, {idx:0, score:0.748}, {idx:1, score:0.743}]
+      2: [{idx:4, score:0.779}, {idx:2, score:0.768}, {idx:3, score:0.764}, {idx:0, score:0.748}, {idx:1, score:0.743}]
     };
 
     for (let qi = 0; qi < queries.length; qi++) {
@@ -319,7 +323,11 @@ $(function () {
     term.echo('1. ЭМБЕДДИНГ = 1024 числа, описывающие СМЫСЛ текста.');
     term.echo('2. КОСИНУСНОЕ СХОДСТВО = 1.0 (одинаково) ... 0.0 (разное).');
     term.echo('3. ПОИСК = запрос → вектор → сравнение → ближайшие документы.');
-    term.echo('4. НИКАКИХ МЕТОК. Модель САМА извлекает смысл.');
+    term.echo('4. НА МАЛЕНЬКОМ КОРПУСЕ РЕЗУЛЬТАТ МОЖЕТ КАЗАТЬСЯ «СТРАННЫМ» — И ЭТО НОРМАЛЬНО.');
+    term.echo('');
+    term.echo('   Если модель на запрос про суп выдаст Nginx выше борща — это значит, что вектор супа');
+    term.echo('   оказался геометрически ближе к техдокументации. Модель не знает кухню, она ');
+    term.echo('   просто измеряет расстояния в пространстве эмбеддингов.');
     term.echo('');
     term.echo('СЛЕДУЮЩИЙ ШАГ: Модуль 3/4 — чанкинг (нарезка документов).');
     term.echo('');
@@ -337,13 +345,21 @@ $(function () {
 
     const q = query.toLowerCase();
     let resultIdx = 0;
-    if (q.includes('борщ') || q.includes('свёкл') || q.includes('еда') || q.includes('обед')) resultIdx = 4;
-    else if (q.includes('изолир') || q.includes('контейнер')) resultIdx = 2;
-    else if (q.includes('систем') || q.includes('служб') || q.includes('инициал')) resultIdx = 3;
-    else if (q.includes('apache') || q.includes('хостинг')) resultIdx = 1;
+
+    if (q.includes('борщ') || q.includes('свёкл') || q.includes('еда') || q.includes('обед') || q.includes('суп')) {
+      resultIdx = 4; // борщ/суп
+    } else if (q.includes('изолир') || q.includes('контейнер')) {
+      resultIdx = 2; // docker
+    } else if (q.includes('систем') || q.includes('служб') || q.includes('инициал')) {
+      resultIdx = 3; // systemd
+    } else if (q.includes('apache') || q.includes('хостинг')) {
+      resultIdx = 1; // apache
+    } else if (q.includes('nginx') || q.includes('веб-сервер') || q.includes('http')) {
+      resultIdx = 0; // nginx
+    }
 
     const results = [
-      {idx: resultIdx, score: 0.81 + Math.random() * 0.05},
+      {idx: resultIdx,         score: 0.81 + Math.random() * 0.05},
       {idx: (resultIdx + 1) % 5, score: 0.78 + Math.random() * 0.04},
       {idx: (resultIdx + 2) % 5, score: 0.75 + Math.random() * 0.04},
       {idx: (resultIdx + 3) % 5, score: 0.74 + Math.random() * 0.03},
@@ -354,6 +370,10 @@ $(function () {
       term.echo(`  ${rank+1}. [${score.toFixed(3)}] ${bar(score)}`);
       term.echo(`     ${documents[idx]}`);
     });
+    term.echo('');
+    term.echo('  На реальной модели результаты могут быть не такими «аккуратными» —');
+    term.echo('  иногда запрос про суп действительно окажется ближе к техтекстам.');
+    term.echo('  Это не баг, а особенность маленького корпуса и геометрии эмбеддингов.');
     term.echo('');
   }
 
@@ -412,8 +432,8 @@ $(function () {
     term.echo('');
     term.echo('ДОСТУПНЫЕ КОМАНДЫ:');
     term.echo('');
-    term.echo('  demo          — полная демонстрация');
-    term.echo('  search ЗАПРОС — поиск по документам');
+    term.echo('  demo          — полная демонстрация (корпус + суп + Nginx)');
+    term.echo('  search ЗАПРОС — поиск по документам (суп, nginx, docker, systemd...)');
     term.echo('  what          — что такое эмбеддинг');
     term.echo('  rag           — схема RAG-конвейера');
     term.echo('  tree          — структура проекта');
@@ -431,8 +451,8 @@ $(function () {
     if (!line) return;
 
     const parts = line.split(/\s+/);
-    const cmd = parts[0].toLowerCase();
-    const args = parts.slice(1).join(' ');
+    const cmd   = parts[0].toLowerCase();
+    const args  = parts.slice(1).join(' ');
 
     switch (cmd) {
       case 'demo':   await cmd_demo(term); break;
